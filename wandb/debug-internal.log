@@ -1,0 +1,16 @@
+{"time":"2024-12-01T16:28:28.534086682+08:00","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2024-12-01T16:28:28.534127827+08:00","level":"INFO","msg":"created symlink","path":"/home/cwwu/Vit/wandb/offline-run-20241201_162828-m5js6nzr/logs/debug-core.log"}
+{"time":"2024-12-01T16:28:29.754209877+08:00","level":"INFO","msg":"created new stream","id":"m5js6nzr"}
+{"time":"2024-12-01T16:28:29.75425011+08:00","level":"INFO","msg":"stream: started","id":"m5js6nzr"}
+{"time":"2024-12-01T16:28:29.754326989+08:00","level":"INFO","msg":"writer: Do: started","stream_id":"m5js6nzr"}
+{"time":"2024-12-01T16:28:29.754327237+08:00","level":"INFO","msg":"handler: started","stream_id":"m5js6nzr"}
+{"time":"2024-12-01T16:28:29.754350482+08:00","level":"INFO","msg":"sender: started","stream_id":"m5js6nzr"}
+{"time":"2024-12-01T16:28:29.769119961+08:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-12-01T16:28:29.92748264+08:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-12-01T16:28:29.928910932+08:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-12-01T16:28:29.931177875+08:00","level":"INFO","msg":"handler: operation stats","stats":{}}
+{"time":"2024-12-01T16:28:30.940346395+08:00","level":"INFO","msg":"stream: closing","id":"m5js6nzr"}
+{"time":"2024-12-01T16:28:30.940388848+08:00","level":"INFO","msg":"handler: closed","stream_id":"m5js6nzr"}
+{"time":"2024-12-01T16:28:30.940409498+08:00","level":"INFO","msg":"writer: Close: closed","stream_id":"m5js6nzr"}
+{"time":"2024-12-01T16:28:30.940464771+08:00","level":"INFO","msg":"sender: closed","stream_id":"m5js6nzr"}
+{"time":"2024-12-01T16:28:30.940524755+08:00","level":"INFO","msg":"stream: closed","id":"m5js6nzr"}

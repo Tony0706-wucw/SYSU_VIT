@@ -1,0 +1,16 @@
+{"time":"2024-12-01T16:20:09.151304614+08:00","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2024-12-01T16:20:09.151340568+08:00","level":"INFO","msg":"created symlink","path":"/home/cwwu/Vit/wandb/run-20241201_162009-zkj18cck/logs/debug-core.log"}
+{"time":"2024-12-01T16:20:10.580007466+08:00","level":"INFO","msg":"created new stream","id":"zkj18cck"}
+{"time":"2024-12-01T16:20:10.580058268+08:00","level":"INFO","msg":"stream: started","id":"zkj18cck"}
+{"time":"2024-12-01T16:20:10.580103167+08:00","level":"INFO","msg":"writer: Do: started","stream_id":"zkj18cck"}
+{"time":"2024-12-01T16:20:10.580153424+08:00","level":"INFO","msg":"handler: started","stream_id":"zkj18cck"}
+{"time":"2024-12-01T16:20:10.580186281+08:00","level":"INFO","msg":"sender: started","stream_id":"zkj18cck"}
+{"time":"2024-12-01T16:20:40.582658016+08:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers)"}
+{"time":"2024-12-01T16:21:12.652018167+08:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers)"}
+{"time":"2024-12-01T16:21:39.220237892+08:00","level":"INFO","msg":"stream: closing","id":"zkj18cck"}
+{"time":"2024-12-01T16:21:39.220376611+08:00","level":"ERROR","msg":"sender: upsertRun:","error":"failed to upsert bucket: api: failed sending: POST https://api.wandb.ai/graphql giving up after 3 attempt(s): context canceled"}
+{"time":"2024-12-01T16:21:39.220381553+08:00","level":"INFO","msg":"handler: closed","stream_id":"zkj18cck"}
+{"time":"2024-12-01T16:21:39.22042554+08:00","level":"INFO","msg":"writer: Close: closed","stream_id":"zkj18cck"}
+{"time":"2024-12-01T16:21:39.2205413+08:00","level":"WARN","msg":"runwork: ignoring record after close","work":{"Record":{"RecordType":{"Request":{"RequestType":{"Defer":{}}}},"control":{"always_send":true}}}}
+{"time":"2024-12-01T16:21:39.220821991+08:00","level":"INFO","msg":"sender: closed","stream_id":"zkj18cck"}
+{"time":"2024-12-01T16:21:39.220842617+08:00","level":"INFO","msg":"stream: closed","id":"zkj18cck"}

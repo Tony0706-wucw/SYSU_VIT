@@ -1,0 +1,15 @@
+{"time":"2024-12-01T16:23:19.775604381+08:00","level":"INFO","msg":"started logging, with flags","port-filename":"/tmp/tmppowhyj89/port-3341844.txt","pid":3341844,"debug":false,"disable-analytics":false}
+{"time":"2024-12-01T16:23:19.775652453+08:00","level":"INFO","msg":"FeatureState","shutdownOnParentExitEnabled":false}
+{"time":"2024-12-01T16:23:19.777502461+08:00","level":"INFO","msg":"Will exit if parent process dies.","ppid":3341844}
+{"time":"2024-12-01T16:23:19.777420415+08:00","level":"INFO","msg":"server is running","addr":{"IP":"127.0.0.1","Port":37223,"Zone":""}}
+{"time":"2024-12-01T16:23:19.969198117+08:00","level":"INFO","msg":"connection: ManageConnectionData: new connection created","id":"127.0.0.1:57968"}
+{"time":"2024-12-01T16:23:25.059374251+08:00","level":"INFO","msg":"handleInformInit: received","streamId":"joy89x8g","id":"127.0.0.1:57968"}
+{"time":"2024-12-01T16:23:26.380898184+08:00","level":"INFO","msg":"handleInformInit: stream started","streamId":"joy89x8g","id":"127.0.0.1:57968"}
+{"time":"2024-12-01T16:24:55.113094365+08:00","level":"INFO","msg":"handleInformTeardown: server teardown initiated","id":"127.0.0.1:57968"}
+{"time":"2024-12-01T16:24:55.114322874+08:00","level":"INFO","msg":"connection: Close: initiating connection closure","id":"127.0.0.1:57968"}
+{"time":"2024-12-01T16:24:55.114264839+08:00","level":"INFO","msg":"server is shutting down"}
+{"time":"2024-12-01T16:24:55.115072991+08:00","level":"INFO","msg":"connection: Close: connection successfully closed","id":"127.0.0.1:57968"}
+{"time":"2024-12-01T16:24:55.115645725+08:00","level":"INFO","msg":"handleInformTeardown: server shutdown complete","id":"127.0.0.1:57968"}
+{"time":"2024-12-01T16:24:55.11568764+08:00","level":"ERROR","msg":"processOutgoingData: flush error","error":"write tcp 127.0.0.1:37223->127.0.0.1:57968: use of closed network connection","id":"127.0.0.1:57968"}
+{"time":"2024-12-01T16:24:55.115738617+08:00","level":"INFO","msg":"connection: ManageConnectionData: connection closed","id":"127.0.0.1:57968"}
+{"time":"2024-12-01T16:24:55.115755006+08:00","level":"INFO","msg":"server is closed"}
