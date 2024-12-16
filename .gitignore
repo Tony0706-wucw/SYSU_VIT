@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific
+outputs/
+logs/
+checkpoints/
+*.pth
+*.log
+
+# Data directories and files
+data/
+JpegImages/
+cifar10/
+main_txt/
+*.txt
+!requirements.txt
+*.tar.gz
+*.zip
+*.gz
+*.rar
+*.7z
+*.pkl
+*.npy
+*.npz
+*.h5
+*.hdf5
+*.bin
+
+# Model files
+*.pth
+*.pt
+*.onnx
+*.tflite
+*.pb
+
+# Git LFS
+.git/lfs/
+.gitattributes
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Large files
+*.pack
+*.idx
