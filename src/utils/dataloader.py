@@ -1,11 +1,38 @@
 import os
 import torch
 from PIL import Image
+import torchvision
 from torchvision import transforms
 from torch.utils.data import Dataset
 
+data_transform = {
+    "train": transforms.Compose([
+        transforms.RandomHorizontalFlip(),  # 随机水平翻转
+        transforms.ToTensor(),  # 转换为 Tensor
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))  # CIFAR-10 标准化参数
+    ]),
+    "test": transforms.Compose([
+        transforms.ToTensor(),  # 转换为 Tensor
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))  # CIFAR-10 标准化参数
+    ])
+}
 
-###### 定义数据读取 ######
+def train_dataset(root):
+    return torchvision.datasets.CIFAR10(
+        root='./data',
+        train=True,
+        transform=data_transform["train"],
+        download=True
+    )
+
+def test_dataset(root):
+    return torchvision.datasets.CIFAR10(
+        root='./data',
+        train=False,
+        transform=data_transform["test"],
+        download=True
+    )
+
 # 将输入图像转化为RGB形式
 def default_loader(path):
     # 规范化路径，确保跨平台兼容
@@ -54,42 +81,3 @@ class Vit_dataset(Dataset):
 
     def __len__(self):
         return len(self.imgs)
-
-
-# # 定义预处理
-# data_transform = {
-#     "train": transforms.Compose([
-#         transforms.Resize(438),
-#         # transforms.Resize(224),
-#         transforms.RandomResizedCrop(384),
-#         # transforms.RandomResizedCrop(224),
-#         transforms.RandomHorizontalFlip(),
-#         transforms.ToTensor(),
-#         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
-#     ]),
-#     "test": transforms.Compose([
-#         transforms.Resize(438),
-#         # transforms.Resize(224),
-#         transforms.CenterCrop(384),
-#         # transforms.CenterCrop(224),
-#         transforms.ToTensor(),
-#         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])}
-#
-data_transform = {
-    "train": transforms.Compose([
-        transforms.RandomHorizontalFlip(),  # 随机水平翻转
-        transforms.ToTensor(),  # 转换为 Tensor
-        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])  # 归一化
-    ]),
-    "test": transforms.Compose([
-        transforms.ToTensor(),  # 转换为 Tensor
-        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])  # 归一化
-    ])
-}
-
-def train_dataset(root):
-    return Vit_dataset(root, transform=data_transform["train"])
-
-
-def test_dataset(root):
-    return Vit_dataset(root, transform=data_transform["test"])

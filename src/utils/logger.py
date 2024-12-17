@@ -129,41 +129,23 @@ class Logger:
             f.write(log_message + '\n\n')  # 添加额外的换行使输出更清晰
         print(log_message + '\n')
 
-    def log_model_info(self, model: torch.nn.Module, input_size: tuple = None):
-        """
-        记录模型的结构信息和参数统计
-        Args:
-            model: PyTorch模型
-            input_size: 输入大小，用于计算每层的输出大小（可选）
-        """
-        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-        
-        # 计算总参数量
+    def log_model_info(self, model: torch.nn.Module):
+        """记录模型信息"""
         total_params = sum(p.numel() for p in model.parameters())
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         
-        log_parts = [
-            f'[{timestamp}]',
-            f'[MODEL INFO]',
-            f'Architecture: {model.__class__.__name__}',
-            f'Total Parameters: {total_params:,}',
-            f'Trainable Parameters: {trainable_params:,}',
-            '\nModel Structure:'
+        info = [
+            "[MODEL INFO]",
+            f"Architecture: {model.__class__.__name__}",
+            f"Total Parameters: {total_params:,}",
+            f"Trainable Parameters: {trainable_params:,}",
         ]
         
-        # 添加模型结构信息
-        log_parts.append(str(model))
-        
-        # 记录每层的参数量
-        log_parts.append('\nParameters per layer:')
-        for name, param in model.named_parameters():
-            log_parts.append(f'  {name}: {param.numel():,} parameters')
-        
-        # 组合并记录信息
-        log_message = '\n'.join(log_parts)
-        with open(self.log_file, 'a') as f:
-            f.write(log_message + '\n\n')
-        print(log_message + '\n')
+        with open(self.log_file, "a") as f:
+            f.write("\n".join(info) + "\n\n")
+            
+        # 只在控制台打印简要信息
+        print(f"Model: {model.__class__.__name__} (Params: {total_params:,})")
 
     def log_metrics(self, metrics: Dict[str, Any]):
         """记录指标，保持向后兼容"""

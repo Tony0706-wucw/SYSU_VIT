@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.utils.prune as prune
-from nets.vit import VisionTransformer
+from src.models.nets.vit import VisionTransformer
 
 # 定义一个使用剪枝和压缩技术的ViT模型
 class PrunedVisionTransformer(VisionTransformer):

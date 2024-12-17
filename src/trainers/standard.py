@@ -1,10 +1,14 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
 import torch.backends.cudnn as cudnn
-from utils.utils_fit import fit_one_epoch
-from logger import Logger
+from src.utils.utils_fit import fit_one_epoch
+from src.utils.logger import Logger
+from src.utils.dataloader import Vit_dataset, train_dataset, test_dataset
+from tqdm import tqdm
+import torch.nn.functional as F
 
 class BaseTrainer:
     def __init__(self, config, model, device):
@@ -15,32 +19,46 @@ class BaseTrainer:
         self.test_accuracy_max = 0
 
     def _create_dataloaders(self):
-        train_data = torch.utils.data.DataLoader(
-            DataSet.train_dataset(self.config.train_txt_path),
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset(self.config.train_txt_path),
             batch_size=self.config.batch_size,
             shuffle=True,
-            num_workers=self.config.num_workers
+            num_workers=self.config.num_workers,
+            pin_memory=True
         )
-        test_data = torch.utils.data.DataLoader(
-            DataSet.test_dataset(self.config.test_txt_path),
+        
+        test_loader = torch.utils.data.DataLoader(
+            test_dataset(self.config.test_txt_path),
             batch_size=self.config.batch_size,
             shuffle=False,
-            num_workers=self.config.num_workers
+            num_workers=self.config.num_workers,
+            pin_memory=True
         )
-        return train_data, test_data
+        
+        return train_loader, test_loader
 
-    def save_checkpoint(self, epoch, optimizer, lr_scheduler, path):
+    def save_checkpoint(self, epoch, optimizer, lr_scheduler=None, save_path=None):
+        """保存检查点"""
+        if save_path is None:
+            save_path = os.path.join(self.config.checkpoint_dir, 'checkpoint.pth')
+        
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        
         checkpoint = {
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'lr_scheduler_state_dict': lr_scheduler.state_dict(),
-            'test_accuracy_max': self.test_accuracy_max
         }
-        torch.save(checkpoint, path)
-        self.logger.info(f"Checkpoint saved at epoch {epoch}")
+        
+        # 只有在提供了学习率调度器时才保存其状态
+        if lr_scheduler is not None:
+            checkpoint['lr_scheduler_state_dict'] = lr_scheduler.state_dict()
+        
+        torch.save(checkpoint, save_path)
+        self.logger.info(f'Checkpoint saved to {save_path}')
 
     def load_checkpoint(self, path):
+        """加载检查点"""
         if os.path.exists(path):
             self.logger.info(f"Loading checkpoint from {path}")
             checkpoint = torch.load(path)
@@ -55,29 +73,36 @@ class BaseTrainer:
 class StandardTrainer(BaseTrainer):
     """标准训练器：用于基础模型、patch8模型和剪枝模型的训练"""
     
-    def _create_optimizer(self):
-        # 使用分组学习率策略
-        high_rate_params = []
-        low_rate_params = []
+    def __init__(self, config, model, device):
+        super().__init__(config, model, device)
+        # 将模型移动到指定设备
+        self.model = self.model.to(device)
+        self.test_accuracy_max = 0.0
         
-        for name, params in self.model.named_parameters():
-            if 'head' in name:
-                high_rate_params += [params]
-            else:
-                low_rate_params += [params]
-                
+        # 创建日志目录
+        os.makedirs(os.path.dirname(config.log_dir), exist_ok=True)
+        
+        # 使用模型名称创建日志文件
+        if hasattr(config, 'model_name'):
+            model_name = config.model_name
+        else:
+            model_name = 'baseline'
+        log_file = os.path.join(config.log_dir, f'train_{model_name}.log')
+        self.logger = Logger(log_file)
+
+    def _create_optimizer(self):
+        """创建优化器"""
         optimizer = optim.SGD(
-            params=[
-                {"params": high_rate_params, 'lr': self.config.high_lr},
-                {"params": low_rate_params, 'lr': self.config.low_lr}
-            ],
+            self.model.parameters(),
+            lr=self.config.high_lr,
             momentum=self.config.momentum,
             weight_decay=self.config.weight_decay
         )
         return optimizer
 
     def train(self):
-        criterion = nn.CrossEntropyLoss()
+        """训练模型"""
+        criterion = nn.CrossEntropyLoss().to(self.device)
         optimizer = self._create_optimizer()
         lr_scheduler = optim.lr_scheduler.StepLR(
             optimizer,
@@ -88,95 +113,28 @@ class StandardTrainer(BaseTrainer):
         # 记录模型信息
         self.logger.log_model_info(self.model)
         
-        checkpoint = self.load_checkpoint(self.config.checkpoint_path)
+        # 获取模型名称
+        model_name = self.config.model_name if hasattr(self.config, 'model_name') else 'baseline'
+        
+        # 尝试加载检查点
+        checkpoint_path = os.path.join(self.config.checkpoint_dir, f'{model_name}_latest.pth')
+        checkpoint = self.load_checkpoint(checkpoint_path)
         start_epoch = checkpoint['epoch'] if checkpoint else 0
         if checkpoint:
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             lr_scheduler.load_state_dict(checkpoint['lr_scheduler_state_dict'])
-            
+            print(f"从检查点恢复训练，开始轮次：{start_epoch}")
+        
         train_loader, test_loader = self._create_dataloaders()
-        total_steps = len(train_loader)
         
         for epoch in range(start_epoch, self.config.epochs):
-            self.model.train()
-            epoch_loss = 0.0
-            epoch_correct = 0
-            epoch_total = 0
-            
-            for step, (images, labels) in enumerate(train_loader):
-                images, labels = images.to(self.device), labels.to(self.device)
-                
-                optimizer.zero_grad()
-                outputs = self.model(images)
-                loss = criterion(outputs, labels)
-                loss.backward()
-                
-                # 计算梯度范数
-                grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-                
-                optimizer.step()
-                
-                # 计算准确率
-                _, predicted = torch.max(outputs.data, 1)
-                epoch_total += labels.size(0)
-                epoch_correct += (predicted == labels).sum().item()
-                epoch_loss += loss.item()
-                
-                # 获取当前学习率
-                lr_dict = {
-                    'head': optimizer.param_groups[0]['lr'],
-                    'base': optimizer.param_groups[1]['lr']
-                }
-                
-                # 记录每个步骤的信息
-                if step % 10 == 0:  # 每10步记录一次
-                    step_metrics = {
-                        'Loss': loss.item(),
-                        'Accuracy': 100 * epoch_correct / epoch_total
-                    }
-                    self.logger.log_training_step(
-                        epoch + 1, step + 1, total_steps,
-                        step_metrics, lr_dict, grad_norm
-                    )
-            
-            # 计算训练集上的平均指标
-            avg_train_loss = epoch_loss / len(train_loader)
-            train_accuracy = 100 * epoch_correct / epoch_total
-            
-            # 在测试集上评估
-            self.model.eval()
-            test_loss = 0.0
-            test_correct = 0
-            test_total = 0
-            
-            with torch.no_grad():
-                for images, labels in test_loader:
-                    images, labels = images.to(self.device), labels.to(self.device)
-                    outputs = self.model(images)
-                    loss = criterion(outputs, labels)
-                    
-                    test_loss += loss.item()
-                    _, predicted = torch.max(outputs.data, 1)
-                    test_total += labels.size(0)
-                    test_correct += (predicted == labels).sum().item()
-            
-            avg_test_loss = test_loss / len(test_loader)
-            test_accuracy = 100 * test_correct / test_total
-            
-            # 记录每个epoch的总结信息
-            epoch_metrics = {
-                'Loss': avg_train_loss,
-                'Accuracy': train_accuracy,
-                'Learning Rate (head)': lr_dict['head'],
-                'Learning Rate (base)': lr_dict['base']
-            }
-            
-            validation_metrics = {
-                'Loss': avg_test_loss,
-                'Accuracy': test_accuracy
-            }
-            
-            self.logger.log_epoch_summary(epoch + 1, epoch_metrics, validation_metrics)
+            # 训练一个epoch
+            train_loss, train_accuracy, test_loss, test_accuracy = fit_one_epoch(
+                self.model, criterion, optimizer,
+                train_loader, test_loader,
+                self.device, epoch,
+                os.path.join(self.config.log_dir, f'train_{model_name}.log')
+            )
             
             # 更新学习率
             lr_scheduler.step()
@@ -184,7 +142,21 @@ class StandardTrainer(BaseTrainer):
             # 保存最佳模型
             if test_accuracy > self.test_accuracy_max:
                 self.test_accuracy_max = test_accuracy
-                self.save_checkpoint(epoch, optimizer, lr_scheduler, self.config.checkpoint_path)
+                self.save_checkpoint(
+                    epoch,
+                    optimizer,
+                    lr_scheduler,
+                    os.path.join(self.config.checkpoint_dir, f'{model_name}_best.pth')
+                )
+            
+            # 定期保存最新模型
+            if (epoch + 1) % self.config.save_freq == 0:
+                self.save_checkpoint(
+                    epoch,
+                    optimizer,
+                    lr_scheduler,
+                    os.path.join(self.config.checkpoint_dir, f'{model_name}_latest.pth')
+                )
 
 class TeacherTrainer(BaseTrainer):
     """教师模型训练器：用于训练作为知识蒸馏源的教师模型"""
@@ -222,56 +194,124 @@ class DistillationTrainer(BaseTrainer):
         super().__init__(config, student_model, device)
         self.teacher_model = teacher_model
         self.teacher_model.eval()  # 教师模型设置为评估模式
+        self.temperature = config.temperature
+        self.alpha = config.alpha if hasattr(config, 'alpha') else 0.5
+        
+        # 设置logger
+        log_file = os.path.join('outputs', 'logs', f'train_distill.log')
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        self.logger = Logger(log_file)
 
-    def distillation_loss(self, student_outputs, teacher_outputs, labels):
-        T = self.config.temperature
-        alpha = self.config.distillation_alpha
-        
-        # 软目标损失（KL散度）
-        soft_targets = nn.functional.softmax(teacher_outputs / T, dim=1)
-        student_log_softmax = nn.functional.log_softmax(student_outputs / T, dim=1)
-        distillation_loss = nn.KLDivLoss(reduction='batchmean')(student_log_softmax, soft_targets) * (T * T)
-        
-        # 硬目标损失（交叉熵）
-        student_loss = nn.CrossEntropyLoss()(student_outputs, labels)
-        
-        # 组合损失
-        total_loss = alpha * student_loss + (1 - alpha) * distillation_loss
-        return total_loss
-
-    def train(self, epochs=10):
-        optimizer = optim.SGD(
+        # 创建优化器
+        self.optimizer = optim.SGD(
             self.model.parameters(),
             lr=self.config.high_lr,
             momentum=self.config.momentum,
             weight_decay=self.config.weight_decay
         )
+
+    def distillation_loss(self, student_outputs, teacher_outputs, labels):
+        T = self.temperature
+        alpha = self.alpha
         
-        train_loader, _ = self._create_dataloaders()
+        # 软目标损失（KL散度）
+        soft_targets = F.softmax(teacher_outputs / T, dim=1)
+        student_log_softmax = F.log_softmax(student_outputs / T, dim=1)
+        distillation_loss = F.kl_div(student_log_softmax, soft_targets, reduction='batchmean') * (T * T)
         
-        for epoch in range(epochs):
-            total_loss = 0
-            batch_count = 0
-            for images, labels in train_loader:
+        # 硬目标损失（交叉熵）
+        student_loss = F.cross_entropy(student_outputs, labels)
+        
+        # 组合损失
+        total_loss = alpha * student_loss + (1 - alpha) * distillation_loss
+        return total_loss
+
+    def evaluate(self):
+        """评估模型在测试集上的性能"""
+        self.model.eval()
+        correct = 0
+        total = 0
+        
+        with torch.no_grad():
+            for images, labels in self.test_loader:
                 images, labels = images.to(self.device), labels.to(self.device)
-                optimizer.zero_grad()
+                outputs = self.model(images)
+                _, predicted = outputs.max(1)
+                total += labels.size(0)
+                correct += predicted.eq(labels).sum().item()
+        
+        acc = 100. * correct / total
+        self.model.train()
+        return acc
+
+    def train(self, epochs=100):
+        train_loader, test_loader = self._create_dataloaders()
+        self.test_loader = test_loader
+        
+        best_acc = 0.0
+        self.model.train()
+        self.teacher_model.eval()
+
+        for epoch in range(epochs):
+            running_loss = 0.0
+            correct = 0
+            total = 0
+            
+            # 使用tqdm创建进度条
+            pbar = tqdm(train_loader, desc=f'Epoch [{epoch+1}/{epochs}]')
+            
+            for batch_idx, (images, labels) in enumerate(pbar):
+                images, labels = images.to(self.device), labels.to(self.device)
                 
-                # 获取教师模型的输出
+                self.optimizer.zero_grad()
+                
+                # 获取教师模型和学生模型的输出
                 with torch.no_grad():
                     teacher_outputs = self.teacher_model(images)
-                
-                # 获取学生模型的输出并计算损失
                 student_outputs = self.model(images)
+                
+                # 计算蒸馏损失
                 loss = self.distillation_loss(student_outputs, teacher_outputs, labels)
                 
                 loss.backward()
-                optimizer.step()
-                total_loss += loss.item()
-                batch_count += 1
+                self.optimizer.step()
+                
+                running_loss += loss.item()
+                
+                _, predicted = student_outputs.max(1)
+                total += labels.size(0)
+                correct += predicted.eq(labels).sum().item()
+                
+                # 更新进度条
+                pbar.set_postfix({
+                    'Loss': f'{running_loss/(batch_idx+1):.4f}',
+                    'Acc': f'{100.*correct/total:.2f}%'
+                })
             
-            avg_loss = total_loss / batch_count if batch_count > 0 else float('inf')
-            self.logger.info(f'Distillation Training - Epoch [{epoch+1}/{epochs}], Loss: {avg_loss:.4f}')
+            # 计算epoch的平均损失和准确率
+            epoch_loss = running_loss / len(train_loader)
+            epoch_acc = 100. * correct / total
             
-            # 保存检查点
-            if (epoch + 1) % 5 == 0:  # 每5个epoch保存一次
-                self.save_checkpoint(epoch, optimizer, None, self.config.distillation_checkpoint_path)
+            # 记录训练信息
+            self.logger.info(f'Epoch [{epoch+1}/{epochs}] - Loss: {epoch_loss:.4f}, Acc: {epoch_acc:.2f}%')
+            
+            # 每个epoch进行验证
+            test_acc = self.evaluate()
+            
+            # 保存最佳模型和最新模型
+            if test_acc > best_acc:
+                best_acc = test_acc
+                self.save_checkpoint(
+                    epoch,
+                    self.optimizer,
+                    None,
+                    os.path.join(self.config.checkpoint_dir, f'distill_best.pth')
+                )
+            self.save_checkpoint(
+                epoch,
+                self.optimizer,
+                None,
+                os.path.join(self.config.checkpoint_dir, f'distill_latest.pth')
+            )
+
+            self.logger.info(f'Test Acc: {test_acc:.2f}%, Best Acc: {best_acc:.2f}%')

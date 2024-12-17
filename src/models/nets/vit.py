@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from utils.utils import to_2tuple, _conv_filter
+from src.utils.utils import to_2tuple, _conv_filter
 
 ###### 定义ViT主体架构 ##############################################
 # 定义patchembedding层
